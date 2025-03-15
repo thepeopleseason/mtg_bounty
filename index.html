@@ -1,0 +1,238 @@
+<html>
+<head>
+<title>Bounties</title>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<style type="text/css">
+  .ongoingBtn {
+    position: relative;
+    bottom: 45px;
+    cursor: pointer;
+    opacity: 0.50;
+  }
+  .ongoingBtn:hover {
+    opacity: 1.0;
+  }
+  .bountyDiv {
+    height: 400px;
+    width: 280px;
+  }
+  .bountyDiv img:hover, .ongoingBtn img:hover {
+    transform: scale(1.5) translateY(20px);
+  }
+</style>
+<script type="text/Javascript">
+const bountys = [
+  { name: "totc-30-bounty-eriana-wrecking-ball.png", title: "Eriana, Wrecking Ball" },
+  { name: "totc-31-bounty-frankie-the-fang.png", title: "Frankie the Fang", },
+  { name: "totc-32-bounty-gorra-tash-and-silas.png", title: "Gorra Tash and Silas", },
+  { name: "totc-33-bounty-lord-fajjal.png", title: "Lord Fajjal", },
+  { name: "totc-34-bounty-lyssa-sterling-collector.png", title: "Lyssa, Sterling Collector",},
+  { name: "totc-35-bounty-miron-tillas-jr.png", title: "Miron Tillas Jr." },
+  { name: "totc-36-bounty-the-outsider.png", title: "The Outsider" },
+  { name: "totc-37-bounty-paq-fleeting-filcher.png", title: "Paq, Fleeting Filcher" },
+  { name: "totc-38-bounty-rissa-blades-lee.png", title: 'Rissa "Blades" Lee' },
+  { name: "totc-39-bounty-sleepy-sovka.png", title: "Sleepy Sovka" },
+  { name: "totc-40-bounty-squeakers-the-sly.png", title: "Squeakers the Sly" },
+  { name: "totc-41-bounty-vara-beth-hannifer.png", title: "Vara Beth Hannifer" },
+];
+
+var deck;
+var current;
+var screenLock;
+var oBountys = [];
+const urlParams = new URLSearchParams(window.location.search);
+
+function set() {
+  var bounty;
+
+  if (current && !current.ongoing) {
+    deck.push(current); // put it on the bottom
+  }
+
+  current = deck.shift(); // load new current
+  if (!current.ongoing) {
+    load(current);
+  }
+  else {
+    oBountys.push(current);
+    unload();
+    redraw();
+  }
+}
+
+function clearBounty(bountyName) {
+  oBountys = oBountys.filter(function(bty) {
+    if (bty.name == bountyName) {
+      deck.push(bty); // put it on the bottom
+      return null;
+    }
+    else {
+      return bty;
+    }
+  });
+  redraw();
+}
+
+function redraw() {
+  if (oBountys.length == 0) {
+    document.getElementById("bounty1").innerHTML =
+      '<div id="bounty1Btn" class="ongoingBtn"><input type="button" value="Set a new bounty in motion" onclick="set()"></div>';
+  }
+  for (let i=0; i<21; i++) {
+    if (i >= oBountys.length) {
+      var mydiv = document.getElementById("bounty" + (i+1));
+      while(mydiv.firstChild) {
+        mydiv.removeChild(mydiv.firstChild);
+      }
+    }
+    else {
+      load(oBountys[i], "bounty" + (i+1));
+    }
+  }
+}
+
+function load(bounty, div = "bounty1") {
+  document.getElementById(div).innerHTML = '<a href="#" onclick="set();"><img src="'
+    + bounty.name + '" style="height: 100%;"></a>'
+    + '<div id="' + div
+    + 'Btn" class="ongoingBtn"><input type="button" value="Abandon" onclick="clearBounty(\''
+    + bounty.name + '\')"></div>';
+  if (!bounty.ongoing) {
+    document.getElementById(div + 'Btn').style.display = "none";
+  }
+}
+
+function unload() {
+  document.getElementById('bounty1').innerHTML = '';
+}
+
+function preloader() {
+  if (document.images) {
+    for (let i in bountys) {
+      var img = new Image();
+      img.src = `${ bountys[i].name }`;
+    }
+  }
+}
+
+function generate_chooser() {
+  let output = '<h1>Choose your bountys:</h1><form name="chooser_form" id="chooser_form">';
+  saved_bountys = JSON.parse(localStorage.getItem('aeBountys'));
+  let bcheck = '';
+  if (saved_bountys) {
+    if (saved_bountys.length == bountys.length) {
+      bcheck = 'checked';
+    }
+  } else {
+    bcheck = 'checked';
+  }
+  output += `<input id="selectall" type="checkbox" name="select" onclick="select_toggle()" ${ bcheck }><em><label for="selectall">Select All/None</label></em><br />`
+  sorted_bountys = bountys.sort((a, b) => (a.title < b.title) ? -1 : (a.title > b.title) ? 1 : 0)
+  for (bty in sorted_bountys) {
+    let checked = bcheck || saved_bountys.includes(sorted_bountys[bty].name) ? 'checked' : '';
+    output += `<input id="${ sorted_bountys[bty].name }" type="checkbox" name="chooser" value="${ sorted_bountys[bty].name }" ${checked}>`;
+    output += `<a onmouseover="preview('${ sorted_bountys[bty].name }');"><label for="${ sorted_bountys[bty].name }">${ sorted_bountys[bty].title }</label></a><br />`;
+  }
+  output += '</form>';
+  document.getElementById('chooser').innerHTML = output;
+}
+
+function init_deck() {
+  checked = []
+  for (i in document.chooser_form.chooser) {
+    if (document.chooser_form.chooser[i].checked) {
+      checked.push(document.chooser_form.chooser[i].value);
+    }
+  }
+  deck = Array.from(bountys.filter(i => checked.includes(i.name)));
+  localStorage.setItem('aeBountys', JSON.stringify(deck.map(x => x.name)));
+
+  // shuffle the deck
+  for (let i=deck.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*i)
+    const temp = deck[i];
+    deck[i] = deck[j];
+    deck[j] = temp;
+  }
+}
+
+async function init_game() {
+  let count = 0;
+  document.chooser_form.chooser.forEach(bty => bty.checked ? count++ : 0);
+  if (count >= 6 || confirm("Bounty decks should contain at least 6 cards. Are you sure you wish to continue?")) {
+    screenLock = await getScreenLock();
+    init_deck();
+    document.getElementById('start').style.display = "none";
+    document.getElementById('preview').style.display = "none";
+    document.getElementById('chooser').style.display = "none";
+    document.getElementById('game').style.display = "block";
+    set();
+  }
+}
+
+async function getScreenLock() {
+  if ('wakeLock' in navigator) {
+    let screenLock;
+    try {
+      screenLock = await navigator.wakeLock.request('screen');
+    } catch(err) {
+      console.log(err.name, err.message);
+    }
+    return screenLock;
+  }
+}
+
+function release() {
+  if (typeof screenLock !== 'undefined' && screenLock != null) {
+    screenLock.release().then(() => {
+      console.log("screenLock released");
+      screenLock = null;
+    });
+  }
+}
+
+
+function select_toggle() {
+  document.chooser_form.chooser.forEach(i =>
+    i.checked = document.chooser_form.select.checked);
+}
+
+function preview(bty) {
+  document.getElementById('preview').innerHTML = `<img src="${ bty }" style="width: 30vw">`;
+}
+
+function start() {
+  document.addEventListener('keydown', (function(e) {
+    switch(e.which) {
+    case 13:
+      // ENTER: Set a new bounty in motion
+      set();
+      break;
+    }
+  }));
+  generate_chooser();
+  preloader();
+}
+</script>
+
+<body style="text-align: center; overflow: auto; margin: 80px 90px 80px; " onload="start();">
+
+<div id="start" style="top: 25; position: fixed;">
+<input type="button" value="Start Archenemy!" id="start_button"
+   onclick="init_game();" class="myButton">
+</div>
+<div id="preview" style="top: 100; position: fixed;"><img src="totc-30-bounty.png" style="width: 30vw"></div>
+<div id="chooser" style="margin-left: 50vw; text-align: left;"></div>
+
+<div id="game" style="display: none;">
+<div class="bountyDiv" id="bounty0" style="float: left;"><img src="totc-30-bounty.png" style="height: 100%;"></div>
+<div class="bountyDiv" id="bounty1" style="float: left;"></div>
+</div>
+
+<div class="footer" style="position: fixed; text-align: center;
+  font-size: 0.5vw; left: 0; bottom: 0; width: 100%; background-color: white;">
+Unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the
+materials used are property of <a href="https://magic.wizards.com/">Wizards of the Coast</a>. ©Wizards of the Coast LLC.</div>
+</body>
+</html>
